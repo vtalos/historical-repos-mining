@@ -2,7 +2,7 @@ import requests, datetime, time, os, urllib, re, subprocess
 
 start_time = time.time()
 # Set your GitHub authentication token
-auth_token = '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'
+auth_token = 'YOUR_ACCESS_TOKEN'
 
 # Define the API endpoint and parameters
 # Parameters defined to search for the 600 repositories with the most stars, that have at least 4000 forks
