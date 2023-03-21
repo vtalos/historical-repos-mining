@@ -2,7 +2,7 @@ import requests, datetime, time, os, urllib, re, subprocess
 
 start_time = time.time()
 # Set your GitHub authentication token
-auth_token = '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'
+auth_token = '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'
 
 # Define the API endpoint and parameters
 # Parameters defined to search for the 600 repositories with the most stars, that have at least 4000 forks
@@ -23,8 +23,11 @@ response3 = requests.get(url, params=params3, headers=headers)
 response4 = requests.get(url, params=params4, headers=headers)
 response5 = requests.get(url, params=params5, headers=headers)
 response6 = requests.get(url, params=params6, headers=headers)
-#create an array that will contain the repositories that should be mined
-filtered_repos=[]
+
+#create an array that will contain the repositories the repositories with more than 50000 commits 
+filtered_repos= []
+#create an array that will contain the repositories the repositories that should be mined
+final_repos = []
 
 # Check if the first request was successful
 if response.status_code == 200:
@@ -32,6 +35,7 @@ if response.status_code == 200:
     data = response.json()
     # Extract the list of repositories from the dictionary
     repositories = data['items']
+    print(data)
     
 # Check if the second request was successful
 if response2.status_code == 200:
@@ -140,24 +144,23 @@ def get_contributors_years(owner, repo):
         # the condition in order to be appended to the filtered_repos list
         return datetime.datetime.fromtimestamp(1647768000)   
                                                                 
-#appends all the repositories with first commit before 2005 to the filtered_repo array
+# Appends all the repositories with first commit before 2004 and 
+# more than 50000 to the filtered_repo array
 for repo in repositories:
-
-    # Get the masters' sha in order to find the number of commits
+     # Get the masters' sha in order to find the number of commits
     repo_url = 'https://github.com/' + repo['full_name']
     process = subprocess.Popen(["git", "ls-remote", repo_url], stdout=subprocess.PIPE)
     stdout, stderr = process.communicate()
     sha = re.split(r'\t+', stdout.decode('ascii'))[0]
-    #print(sha)
     commit_number = commit_count(repo['full_name'], sha, auth_token)
-    #print(commit_number)
-
-    year = get_contributors_years(repo['owner']['login'], repo['name'])
-    if year < datetime.datetime(2004, 1, 1) and commit_number > 50000:
-        print("A repository was found!")
+    if commit_number > 50000:
         filtered_repos.append(repo)
-for repo in filtered_repos:
-    print(repo['name'])
+        
+for repo in filtered_repos: 
+    year = get_contributors_years(repo['owner']['login'], repo['name'])
+    if year < datetime.datetime(2004, 1, 1):
+        final_repos.append(repo)
+        print(f"{repo['owner']['login']}/{repo['name']}: {repo['stargazers_count']} stars")
 
 end_time = time.time()
 execution_time = end_time - start_time
