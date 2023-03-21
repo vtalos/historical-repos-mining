@@ -1,4 +1,4 @@
-import requests, datetime , time
+import requests, datetime, time, os, urllib, re, subprocess
 
 start_time = time.time()
 # Set your GitHub authentication token
@@ -77,6 +77,37 @@ if response6.status_code == 200:
 else:
     print(f"Error: {response.status_code}")
 
+# Count the number of commits in 'master' branch
+def commit_count(project, sha='master', token=None):
+
+    # PAT
+    token = token or os.environ.get('GITHUB_API_TOKEN')
+
+   # project commits url
+    url = f'https://api.github.com/repos/{project}/commits'
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': f'token {token}',
+    }
+    params = {
+        'sha': sha,
+        'per_page': 1, # 1 page per commit
+    }
+    resp = requests.request('GET', url, params=params, headers=headers)
+    if (resp.status_code // 100) != 2:
+        raise Exception(f'invalid github response: {resp.content}')
+    # check the resp count, just in case there are 0 commits
+    commit_count = len(resp.json())
+    last_page = resp.links.get('last')
+    # if there are no more pages, the count must be 0 or 1
+    if last_page:
+        # extract the query string from the last page url
+        qs = urllib.parse.urlparse(last_page['url']).query
+        # extract the page number from the query string
+        commit_count = int(dict(urllib.parse.parse_qsl(qs))['page']) # Get the number of commits by the last page
+    return commit_count
+
 # returns the date of the first commit of the repo, taking as input it's owner and it's name.
 def get_contributors_years(owner, repo):
     url = f"https://api.github.com/repos/{owner}/{repo}/stats/contributors"
@@ -111,8 +142,18 @@ def get_contributors_years(owner, repo):
                                                                 
 #appends all the repositories with first commit before 2005 to the filtered_repo array
 for repo in repositories:
+
+    # Get the masters' sha in order to find the number of commits
+    repo_url = 'https://github.com/' + repo['full_name']
+    process = subprocess.Popen(["git", "ls-remote", repo_url], stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    sha = re.split(r'\t+', stdout.decode('ascii'))[0]
+    #print(sha)
+    commit_number = commit_count(repo['full_name'], sha, auth_token)
+    #print(commit_number)
+
     year = get_contributors_years(repo['owner']['login'], repo['name'])
-    if year < datetime.datetime(2004, 1, 1):
+    if year < datetime.datetime(2004, 1, 1) and commit_number > 50000:
         print("A repository was found!")
         filtered_repos.append(repo)
 for repo in filtered_repos:
