@@ -2,10 +2,10 @@ import requests, datetime, time, os, urllib, re, subprocess
 
 start_time = time.time()
 # Set your GitHub authentication token
-auth_token = 'YOUR_ACCESS_TOKEN'
+auth_token = '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'
 
 # Define the API endpoint and parameters
-# Parameters defined to search for the 600 repositories with the most stars, that have at least 4000 forks
+# Parameters defined to search for the 1000 repositories with the most stars, that have at least 4000 forks
 url = 'https://api.github.com/search/repositories'
 params = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"1"}
 params2 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"2"}
@@ -13,6 +13,10 @@ params3 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000
 params4 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"4"}
 params5 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"5"}
 params6 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"6"}
+params7 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"7"}
+params8 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"8"}
+params9 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"9"}
+params10 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"10"}
 # Set the authentication header with your token
 headers = {'Authorization': f'token {auth_token}'}
 responses = []
@@ -23,15 +27,21 @@ response3 = requests.get(url, params=params3, headers=headers)
 response4 = requests.get(url, params=params4, headers=headers)
 response5 = requests.get(url, params=params5, headers=headers)
 response6 = requests.get(url, params=params6, headers=headers)
-responses.extend([response, response2, response3, response4, response5, response6])
+response7= requests.get(url, params=params7, headers=headers)
+response8 = requests.get(url, params=params8, headers=headers)
+response9 = requests.get(url, params=params9, headers=headers)
+response10 = requests.get(url, params=params10, headers=headers)
+responses.extend([response, response2, response3, response4, response5, response6, response7, response8, response9, response10])
 
-# Create an array for the repos from requests
+# Create a list for the repos from requests
 repositories= []
-# Create an array that will contain the repositories the repositories with more than 50000 commits 
+# Create a list that will contain the repositories the repositories with more than 50000 commits 
 filtered_repos= []
-# Create an array that will contain the repositories the repositories that should be mined
+# Create a list that will contain the repositories the repositories that should be mined
 final_repos = []
-
+# create a list to show where the repo was found( position 1, 2, ..., 1000)
+indexes= []
+final_indexes= []
 for response in responses:
     # Check if the  request was successful
     if response.status_code == 200:
@@ -43,11 +53,10 @@ for response in responses:
         print(f"Error: {response.status_code}")
 
 # Print the name and number of stars for each repository
-i=1
+i=0
 for repo in repositories:
     print(f"{i} {repo['name']}: {repo['stargazers_count']} stars")
-    i=i+1
-       
+    i=i+1    
 
 # Count the number of commits in 'master' branch
 def commit_count(project, sha='master', token=None):
@@ -113,9 +122,10 @@ def get_contributors_years(owner, repo):
         return datetime.datetime.fromtimestamp(1647768000)   
                                                                 
 # Appends all the repositories with first commit before 2004 and 
-# more than 50000 to the filtered_repo array
+# more than 50000 commits to the final_repos list
+i = 0
 for repo in repositories:
-     # Get the masters' sha in order to find the number of commits
+    # Get the masters' sha in order to find the number of commits
     repo_url = 'https://github.com/' + repo['full_name']
     process = subprocess.Popen(["git", "ls-remote", repo_url], stdout=subprocess.PIPE)
     stdout, stderr = process.communicate()
@@ -123,13 +133,18 @@ for repo in repositories:
     commit_number = commit_count(repo['full_name'], sha, auth_token)
     if commit_number > 50000:
         filtered_repos.append(repo)
-        
-for repo in filtered_repos: 
+        indexes.append(i)
+    i = i + 1
+i=0
+for repo in filtered_repos:   
     year = get_contributors_years(repo['owner']['login'], repo['name'])
     if year < datetime.datetime(2004, 1, 1):
         final_repos.append(repo)
         print(f"{repo['owner']['login']}/{repo['name']}: {repo['stargazers_count']} stars")
-
+        final_indexes.append(indexes[i])
+    i += 1  
 end_time = time.time()
 execution_time = end_time - start_time
 print(execution_time)
+print(final_indexes)
+
