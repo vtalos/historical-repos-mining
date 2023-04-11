@@ -106,17 +106,16 @@ def monthly_commit_count(project, sha='master', token=None):
         'per_page': 1, # 1 page per commit
     }
 
-    year = 2022
+    year = 2022 # Count the commits of each month in the year 2022
     months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    per_month = 1 # Count commits per month
-    month_count = []
-    not_dense = 0
+    per_month = 1 # Count commits per one month
+    not_dense = 0 # The number of months that have under 100 commits
 
     for month in months:
         start_date = datetime(int(year), int(month), 1)
         params['since'] = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-        end_date = start_date + datetime.timedelta(days=30 * per_month)
+        end_date = start_date + datetime.timedelta(days=30 * per_month) 
         params['until'] = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         resp = requests.request('GET', url, params=params, headers=headers)
@@ -133,7 +132,7 @@ def monthly_commit_count(project, sha='master', token=None):
             # extract the page number from the query string
             commit_count = int(dict(urllib.parse.parse_qsl(qs))['page'])  # Get the number of commits by the last page
         if commit_count < 100:
-            not_dense = not_dense + 1
+            not_dense = not_dense + 1 # if this month has under 100 commits, increase the not_dence months by one
     return not_dense
 
 
