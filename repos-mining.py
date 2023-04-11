@@ -89,6 +89,54 @@ def commit_count(project, sha='master', token=None):
         commit_count = int(dict(urllib.parse.parse_qsl(qs))['page']) # Get the number of commits by the last page
     return commit_count
 
+def monthly_commit_count(project, sha='master', token=None):
+
+    # PAT
+    token = token or os.environ.get('GITHUB_API_TOKEN')
+
+   # project commits url
+    url = f'https://api.github.com/repos/{project}/commits'
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': f'token {token}',
+    }
+    params = {
+        'sha': sha,
+        'per_page': 1, # 1 page per commit
+    }
+
+    year = 2022
+    months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    per_month = 1 # Count commits per month
+    month_count = []
+    not_dense = 0
+
+    for month in months:
+        start_date = datetime(int(year), int(month), 1)
+        params['since'] = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        end_date = start_date + datetime.timedelta(days=30 * per_month)
+        params['until'] = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        resp = requests.request('GET', url, params=params, headers=headers)
+
+        if (resp.status_code // 100) != 2:
+            raise Exception(f'invalid github response: {resp.content}')
+        # check the resp count, just in case there are 0 commits
+        commit_count = len(resp.json())
+        last_page = resp.links.get('last')
+        # if there are no more pages, the count must be 0 or 1
+        if last_page:
+            # extract the query string from the last page url
+            qs = urllib.parse.urlparse(last_page['url']).query
+            # extract the page number from the query string
+            commit_count = int(dict(urllib.parse.parse_qsl(qs))['page'])  # Get the number of commits by the last page
+        if commit_count < 100:
+            not_dense = not_dense + 1
+    return not_dense
+
+
 # returns the date of the first commit of the repo, taking as input it's owner and it's name.
 def get_contributors_years(owner, repo):
     url = f"https://api.github.com/repos/{owner}/{repo}/stats/contributors"
@@ -131,7 +179,8 @@ for repo in repositories:
     stdout, stderr = process.communicate()
     sha = re.split(r'\t+', stdout.decode('utf-8'))[0]
     commit_number = commit_count(repo['full_name'], sha, auth_token)
-    if commit_number > 50000:
+    not_dence = monthly_commit_count(repo['full_name'], sha, auth_token)
+    if commit_number > 50000 and not_dence < 3:
         filtered_repos.append(repo)
         indexes.append(i)
     i = i + 1
