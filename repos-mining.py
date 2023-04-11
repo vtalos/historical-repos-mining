@@ -1,8 +1,9 @@
-import requests, datetime, time, os, urllib, re, subprocess
+import requests, datetime, time, os, urllib, re, subprocess, calendar
 
 start_time = time.time()
 # Set your GitHub authentication token
-auth_token = 'YOUR_ACCESS_TOKEN'
+#auth_token = 'YOUR_ACCESS_TOKEN'
+auth_token = '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'
 
 # Define the API endpoint and parameters
 # Parameters defined to search for the 1000 repositories with the most stars, that have at least 4000 forks
@@ -112,10 +113,10 @@ def monthly_commit_count(project, sha='master', token=None):
     not_dense = 0 # The number of months that have under 100 commits
 
     for month in months:
-        start_date = datetime(int(year), int(month), 1)
+        start_date = datetime.datetime(int(year), int(month), 1)
         params['since'] = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-        end_date = start_date + datetime.timedelta(days=30 * per_month) 
+        _, days_in_month = calendar.monthrange(year, month)
+        end_date = start_date + datetime.timedelta(days_in_month)
         params['until'] = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
 
         resp = requests.request('GET', url, params=params, headers=headers)
@@ -131,8 +132,10 @@ def monthly_commit_count(project, sha='master', token=None):
             qs = urllib.parse.urlparse(last_page['url']).query
             # extract the page number from the query string
             commit_count = int(dict(urllib.parse.parse_qsl(qs))['page'])  # Get the number of commits by the last page
+        print("cc", commit_count)
         if commit_count < 100:
             not_dense = not_dense + 1 # if this month has under 100 commits, increase the not_dence months by one
+    print("not dense:" , not_dense)
     return not_dense
 
 
