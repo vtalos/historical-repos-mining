@@ -1,9 +1,8 @@
 import requests, datetime, time, os, urllib, re, subprocess, calendar
-from lxml import html
+
 start_time = time.time()
 # Set your GitHub authentication token
-#auth_token = 'YOUR_ACCESS_TOKEN'
-auth_token = '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'
+auth_token = 'YOUR_ACCESS_TOKEN'
 
 # Define the API endpoint and parameters
 # Parameters defined to search for the 1000 repositories with the most stars, that have at least 4000 forks
@@ -114,7 +113,6 @@ def enough_contributors(owner, repo):
     while True:
         params = {"page": page, "per_page": per_page}
         response = requests.get(url, headers=headers, params=params)
-        print(len(response.json()), "RESPONSE")
         if response.status_code == 200:
             contributors += response.json()
             if page > 2:
@@ -214,6 +212,7 @@ def get_contributors_years(owner, repo):
 
 # Appends all the repositories with first commit before 2004 and 
 # more than 50000 commits to the final_repos list
+
 i = 0
 for repo in repositories:
     # Get the masters' sha in order to find the number of commits
