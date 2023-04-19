@@ -1,9 +1,9 @@
 import requests, datetime, time, os, urllib, re, subprocess, calendar
-
+from lxml import html
 start_time = time.time()
 # Set your GitHub authentication token
 #auth_token = 'YOUR_ACCESS_TOKEN'
-auth_token = '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'
+auth_token = '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'
 
 # Define the API endpoint and parameters
 # Parameters defined to search for the 1000 repositories with the most stars, that have at least 4000 forks
@@ -90,6 +90,44 @@ def commit_count(project, sha='master', token=None):
         commit_count = int(dict(urllib.parse.parse_qsl(qs))['page']) # Get the number of commits by the last page
     return commit_count
 
+def enough_contributors(owner, repo):
+    url = f"https://api.github.com/repos/{owner}/{repo}/stats/contributors"
+
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    response = requests.get(url, headers=headers)
+
+    # Redo the request, so the status code 202 may change to 200.
+    # Don't do the request more than 4 times
+    j = 0
+    while response.status_code == 202 and j <= 4:
+        time.sleep(5)
+        response = requests.get(url, headers=headers)
+        j = + 1
+
+    contributors = []
+    page = 1
+    per_page = 100
+
+    while True:
+        params = {"page": page, "per_page": per_page}
+        response = requests.get(url, headers=headers, params=params)
+        print(len(response.json()), "RESPONSE")
+        if response.status_code == 200:
+            contributors += response.json()
+            if page > 2:
+                return True
+            if len(response.json()) < per_page:
+                break
+            page += 1
+            time.sleep(1)
+        else:
+            print("Failed to retrieve contributors:", response.status_code)
+            break
+    return False
+
 def monthly_commit_count(project, sha='master', token=None):
 
     # PAT
@@ -142,12 +180,13 @@ def monthly_commit_count(project, sha='master', token=None):
 # returns the date of the first commit of the repo, taking as input it's owner and it's name.
 def get_contributors_years(owner, repo):
     url = f"https://api.github.com/repos/{owner}/{repo}/stats/contributors"
+
     headers = {
         "Authorization": f"Bearer {auth_token}",
         "Accept": "application/vnd.github.v3+json"
     }
     response = requests.get(url, headers=headers)
-    
+
     #Redo the request, so the status code 202 may change to 200.
     #Don't do the request more than 4 times
     j=0
@@ -155,14 +194,15 @@ def get_contributors_years(owner, repo):
         time.sleep(5)
         response=requests.get(url, headers=headers)
         j =+ 1
+
     if response.status_code == 200:
         contributors = response.json()
         #retrieves the data of the first commit in the repo
+
         for contributor in contributors:
             weeks = contributor["weeks"]
             first_week = weeks[0]
             first_commit_date = datetime.datetime.fromtimestamp(first_week["w"])
-            
         return first_commit_date
     
     if response.status_code == 202:
@@ -170,7 +210,8 @@ def get_contributors_years(owner, repo):
         # Returns March 18, 2022. It is a random date that will not fit 
         # the condition in order to be appended to the filtered_repos list
         return datetime.datetime.fromtimestamp(1647768000)   
-                                                                
+
+
 # Appends all the repositories with first commit before 2004 and 
 # more than 50000 commits to the final_repos list
 i = 0
@@ -182,12 +223,13 @@ for repo in repositories:
     sha = re.split(r'\t+', stdout.decode('utf-8'))[0]
     commit_number = commit_count(repo['full_name'], sha, auth_token)
     not_dence = monthly_commit_count(repo['full_name'], sha, auth_token)
-    if commit_number > 50000 and not_dence < 3:
+    if commit_number > 50000 and not_dence < 3 and enough_contributors(repo['owner']['login'], repo['name']):
         filtered_repos.append(repo)
         indexes.append(i)
     i = i + 1
+
 i=0
-for repo in filtered_repos:   
+for repo in filtered_repos:
     year = get_contributors_years(repo['owner']['login'], repo['name'])
     if year < datetime.datetime(2004, 1, 1):
         final_repos.append(repo)
