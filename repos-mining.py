@@ -2,7 +2,7 @@ import requests, datetime, time, os, urllib, re, subprocess, calendar
 
 start_time = time.time()
 # Set your GitHub authentication token
-auth_token = 'YOUR_ACCESS_TOKEN'
+auth_token = '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'
 
 # Define the API endpoint and parameters
 # Parameters defined to search for the 1000 repositories with the most stars, that have at least 4000 forks
@@ -221,16 +221,15 @@ for repo in repositories:
     stdout, stderr = process.communicate()
     sha = re.split(r'\t+', stdout.decode('utf-8'))[0]
     commit_number = commit_count(repo['full_name'], sha, auth_token)
-    not_dence = monthly_commit_count(repo['full_name'], sha, auth_token)
-    if commit_number > 50000 and not_dence < 3 and enough_contributors(repo['owner']['login'], repo['name']):
+    if commit_number > 50000 :
         filtered_repos.append(repo)
         indexes.append(i)
     i = i + 1
-
 i=0
 for repo in filtered_repos:
+    not_dence = monthly_commit_count(repo['full_name'], sha, auth_token)
     year = get_contributors_years(repo['owner']['login'], repo['name'])
-    if year < datetime.datetime(2004, 1, 1):
+    if year < datetime.datetime(2004, 1, 1) and not_dence < 3 and enough_contributors(repo['owner']['login'], repo['name']):
         final_repos.append(repo)
         print(f"{repo['owner']['login']}/{repo['name']}: {repo['stargazers_count']} stars")
         final_indexes.append(indexes[i])
