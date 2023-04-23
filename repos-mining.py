@@ -150,7 +150,7 @@ def get_contributors_years(owner, repo):
 
 start_time = time.time()
 # Set your GitHub authentication token
-auth_token = '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'
+auth_token = 'YOUR_ACCESS_TOKEN'
 repositories = []
 filtered_repos = []
 final_repos = []
@@ -178,7 +178,7 @@ while True:
         print(f" {repo['name']}: {repo['stargazers_count']} stars")
     # increment the page number to retrieve the next page of results
     page += 1
-    
+
 # Appends all the repositories with first commit before 2004, more than 200 contributors,
 # at least 100 commits per month and more than 50000 commits to the final_repos list
 
