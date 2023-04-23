@@ -1,63 +1,5 @@
 import requests, datetime, time, os, urllib, re, subprocess, calendar
 
-start_time = time.time()
-# Set your GitHub authentication token
-auth_token = 'YOUR_ACCESS_TOKEN'
-
-# Define the API endpoint and parameters
-# Parameters defined to search for the 1000 repositories with the most stars, that have at least 4000 forks
-url = 'https://api.github.com/search/repositories'
-params = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"1"}
-params2 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"2"}
-params3 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"3"}
-params4 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"4"}
-params5 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"5"}
-params6 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"6"}
-params7 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"7"}
-params8 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"8"}
-params9 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"9"}
-params10 = {'q': 'stars:>10000', 'sort': 'stars', 'order': 'desc', 'forks':'>4000', "per_page":"100", "page":"10"}
-# Set the authentication header with your token
-headers = {'Authorization': f'token {auth_token}'}
-responses = []
-# Send the request to the API with authentication headers
-response = requests.get(url, params=params, headers=headers)
-response2 = requests.get(url, params=params2, headers=headers)
-response3 = requests.get(url, params=params3, headers=headers)
-response4 = requests.get(url, params=params4, headers=headers)
-response5 = requests.get(url, params=params5, headers=headers)
-response6 = requests.get(url, params=params6, headers=headers)
-response7= requests.get(url, params=params7, headers=headers)
-response8 = requests.get(url, params=params8, headers=headers)
-response9 = requests.get(url, params=params9, headers=headers)
-response10 = requests.get(url, params=params10, headers=headers)
-responses.extend([response, response2, response3, response4, response5, response6, response7, response8, response9, response10])
-
-# Create a list for the repos from requests
-repositories= []
-# Create a list that will contain the repositories the repositories with more than 50000 commits 
-filtered_repos= []
-# Create a list that will contain the repositories the repositories that should be mined
-final_repos = []
-# create a list to show where the repo was found( position 1, 2, ..., 1000)
-indexes= []
-final_indexes= []
-for response in responses:
-    # Check if the  request was successful
-    if response.status_code == 200:
-        # Parse the JSON response into a Python dictionary
-        data = response.json()
-        # Extract the list of repositories from the dictionary
-        repositories += data['items']
-    else:
-        print(f"Error: {response.status_code}")
-
-# Print the name and number of stars for each repository
-i=0
-for repo in repositories:
-    print(f"{i} {repo['name']}: {repo['stargazers_count']} stars")
-    i=i+1    
-
 # Count the number of commits in 'master' branch
 def commit_count(project, sha='master', token=None):
 
@@ -142,36 +84,33 @@ def monthly_commit_count(project, sha='master', token=None):
         'sha': sha,
         'per_page': 1, # 1 page per commit
     }
-
-    year = 2022 # Count the commits of each month in the year 2022
+    years=list(range(2004,2023))
     months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     per_month = 1 # Count commits per one month
     not_dense = 0 # The number of months that have under 100 commits
+    for year in years:
+        for month in months:
+            start_date = datetime.datetime(int(year), int(month), 1)
+            params['since'] = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+            _, days_in_month = calendar.monthrange(year, month)
+            end_date = start_date + datetime.timedelta(days_in_month)
+            params['until'] = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    for month in months:
-        start_date = datetime.datetime(int(year), int(month), 1)
-        params['since'] = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-        _, days_in_month = calendar.monthrange(year, month)
-        end_date = start_date + datetime.timedelta(days_in_month)
-        params['until'] = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+            resp = requests.request('GET', url, params=params, headers=headers)
 
-        resp = requests.request('GET', url, params=params, headers=headers)
-
-        if (resp.status_code // 100) != 2:
-            raise Exception(f'invalid github response: {resp.content}')
-        # check the resp count, just in case there are 0 commits
-        commit_count = len(resp.json())
-        last_page = resp.links.get('last')
-        # if there are no more pages, the count must be 0 or 1
-        if last_page:
-            # extract the query string from the last page url
-            qs = urllib.parse.urlparse(last_page['url']).query
-            # extract the page number from the query string
-            commit_count = int(dict(urllib.parse.parse_qsl(qs))['page'])  # Get the number of commits by the last page
-        print("cc", commit_count)
-        if commit_count < 100:
-            not_dense = not_dense + 1 # if this month has under 100 commits, increase the not_dence months by one
-    print("not dense:" , not_dense)
+            if (resp.status_code // 100) != 2:
+                raise Exception(f'invalid github response: {resp.content}')
+            # check the resp count, just in case there are 0 commits
+            commit_count = len(resp.json())
+            last_page = resp.links.get('last')
+            # if there are no more pages, the count must be 0 or 1
+            if last_page:
+                # extract the query string from the last page url
+                qs = urllib.parse.urlparse(last_page['url']).query
+                # extract the page number from the query string
+                commit_count = int(dict(urllib.parse.parse_qsl(qs))['page'])  # Get the number of commits by the last page
+            if commit_count < 100:
+                not_dense = not_dense + 1 # if this month has under 100 commits, increase the not_dence months by one
     return not_dense
 
 
@@ -209,11 +148,40 @@ def get_contributors_years(owner, repo):
         # the condition in order to be appended to the filtered_repos list
         return datetime.datetime.fromtimestamp(1647768000)   
 
+start_time = time.time()
+# Set your GitHub authentication token
+auth_token = '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'
+repositories = []
+filtered_repos = []
+final_repos = []
 
-# Appends all the repositories with first commit before 2004 and 
-# more than 50000 commits to the final_repos list
+# set the search query and parameters
+query = "stars:>100 forks:>100"
+sort = "stars"
+order = "desc"
+per_page = 100
+page = 1
+headers = {"Accept": "application/vnd.github.v3+json"}
 
-i = 0
+# loop through all pages of results and add the name of each repository to the list
+while True:
+    # make a request to the GitHub API with the specified parameters and pagination
+    url = f"https://api.github.com/search/repositories?q={query}&sort={sort}&order={order}&per_page={per_page}&page={page}"
+    response = requests.get(url, headers=headers)
+    # check if there are no more results and break out of the loop
+    if "items" not in response.json() or len(response.json()["items"]) == 0:
+        break
+    # parse the response to get the names of the repositories and add them to the list
+    repos = response.json()["items"]
+    for repo in repos:
+        repositories.append(repo)
+        print(f" {repo['name']}: {repo['stargazers_count']} stars")
+    # increment the page number to retrieve the next page of results
+    page += 1
+    
+# Appends all the repositories with first commit before 2004, more than 200 contributors,
+# at least 100 commits per month and more than 50000 commits to the final_repos list
+
 for repo in repositories:
     # Get the masters' sha in order to find the number of commits
     repo_url = 'https://github.com/' + repo['full_name']
@@ -223,19 +191,19 @@ for repo in repositories:
     commit_number = commit_count(repo['full_name'], sha, auth_token)
     if commit_number > 50000 :
         filtered_repos.append(repo)
-        indexes.append(i)
-    i = i + 1
-i=0
+    
 for repo in filtered_repos:
-    not_dence = monthly_commit_count(repo['full_name'], sha, auth_token)
+    repo_url = 'https://github.com/' + repo['full_name']
+    process = subprocess.Popen(["git", "ls-remote", repo_url], stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    sha = re.split(r'\t+', stdout.decode('utf-8'))[0]
     year = get_contributors_years(repo['owner']['login'], repo['name'])
-    if year < datetime.datetime(2004, 1, 1) and not_dence < 3 and enough_contributors(repo['owner']['login'], repo['name']):
-        final_repos.append(repo)
-        print(f"{repo['owner']['login']}/{repo['name']}: {repo['stargazers_count']} stars")
-        final_indexes.append(indexes[i])
-    i += 1  
+    if year < datetime.datetime(2004, 1, 1) and enough_contributors(repo['owner']['login'], repo['name']) :
+        if monthly_commit_count(repo['full_name'], sha, auth_token) < 15 :
+            final_repos.append(repo['full_name'])
+            print(f"{repo['owner']['login']}/{repo['name']}: {repo['stargazers_count']} stars")
+             
 end_time = time.time()
+print(final_repos)
 execution_time = end_time - start_time
 print(execution_time)
-print(final_indexes)
-
