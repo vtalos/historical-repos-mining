@@ -2,10 +2,8 @@ import requests, datetime, time, os, urllib, re, subprocess, calendar
 
 # Count the number of commits in 'master' branch
 def commit_count(project, sha='master', token=None):
-
     # PAT
     token = token or os.environ.get('GITHUB_API_TOKEN')
-
    # project commits url
     url = f'https://api.github.com/repos/{project}/commits'
     headers = {
@@ -51,7 +49,6 @@ def enough_contributors(owner, repo):
     contributors = []
     page = 1
     per_page = 100
-
     while True:
         params = {"page": page, "per_page": per_page}
         response = requests.get(url, headers=headers, params=params)
@@ -150,35 +147,36 @@ def get_contributors_years(owner, repo):
 
 start_time = time.time()
 # Set your GitHub authentication token
-auth_token = 'YOUR_ACCESS_TOKEN'
+auth_token = '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'
 repositories = []
 filtered_repos = []
 final_repos = []
-
 # set the search query and parameters
 query = "stars:>100 forks:>100"
 sort = "stars"
 order = "desc"
 per_page = 100
 page = 1
+total_pages= 10
 headers = {"Accept": "application/vnd.github.v3+json"}
 
 # loop through all pages of results and add the name of each repository to the list
-while True:
+for page in range(1, total_pages + 1):
     # make a request to the GitHub API with the specified parameters and pagination
     url = f"https://api.github.com/search/repositories?q={query}&sort={sort}&order={order}&per_page={per_page}&page={page}"
+    headers = { "Authorization": f"Bearer {auth_token}" }
     response = requests.get(url, headers=headers)
-    # check if there are no more results and break out of the loop
-    if "items" not in response.json() or len(response.json()["items"]) == 0:
-        break
-    # parse the response to get the names of the repositories and add them to the list
-    repos = response.json()["items"]
-    for repo in repos:
-        repositories.append(repo)
-        print(f" {repo['name']}: {repo['stargazers_count']} stars")
+    if response.status_code == 200:
+        data = response.json()
+        repositories += data["items"]
+    else:
+        print(response.status_code)
     # increment the page number to retrieve the next page of results
     page += 1
-
+i=0
+for repo in repositories:
+    print(f"{i}. {repo['name']} ({repo['stargazers_count']} stars)")
+    i+=1
 # Appends all the repositories with first commit before 2004, more than 200 contributors,
 # at least 100 commits per month and more than 50000 commits to the final_repos list
 
@@ -199,10 +197,10 @@ for repo in filtered_repos:
     sha = re.split(r'\t+', stdout.decode('utf-8'))[0]
     year = get_contributors_years(repo['owner']['login'], repo['name'])
     if year < datetime.datetime(2004, 1, 1) and enough_contributors(repo['owner']['login'], repo['name']) :
-        if monthly_commit_count(repo['full_name'], sha, auth_token) < 15 :
+        if monthly_commit_count(repo['full_name'], sha, auth_token) < 20 :
             final_repos.append(repo['full_name'])
             print(f"{repo['owner']['login']}/{repo['name']}: {repo['stargazers_count']} stars")
-             
+                       
 end_time = time.time()
 print(final_repos)
 execution_time = end_time - start_time
